@@ -55,12 +55,6 @@ A typical two-stage build for dependency syncing, then copies the virtualenv int
 
 ### Run
 
-If your `app.py` exposes an ASGI app named `app` and you run with Uvicorn:
-
-- `docker run --rm -p 8501:8501 travel-itinerary-planner:latest`
-
-If your app requires environment variables (API keys, etc.):
-
 - `docker run --rm -p 8000:8000 -e GROQ_API_KEY=... travel-itinerary-planner:latest`
 
 ## Development notes
@@ -68,4 +62,5 @@ If your app requires environment variables (API keys, etc.):
 - Source code lives in `src/`.
 - If you change dependencies, update `pyproject.toml` and regenerate `uv.lock` with uv tooling.
 - Keep secrets out of the repository; use environment variables instead.
+
 
