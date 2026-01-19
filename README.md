@@ -55,7 +55,7 @@ A typical two-stage build for dependency syncing, then copies the virtualenv int
 
 ### Run
 
-- `docker run --rm -p 8000:8000 -e GROQ_API_KEY=... travel-itinerary-planner:latest`
+- `docker run --rm -p 8501:8501 -e GROQ_API_KEY=... travel-itinerary-planner:latest`
 
 ## Development notes
 
