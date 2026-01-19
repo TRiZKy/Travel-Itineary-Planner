@@ -124,9 +124,20 @@ export function deployObservability(args: {
             chart: "loki",
             repositoryOpts: { repo: "https://grafana.github.io/helm-charts" },
             values: {
-                deploymentMode: "SingleBinary",
+                // Distributed / “real” mode
+                deploymentMode: "SimpleScalable",
 
-                // use our KSA (so WI works)
+                // Keep Helm tests happy
+                lokiCanary: { enabled: true },
+
+                // Enable gateway (nice for a single endpoint)
+                gateway: { enabled: true },
+
+                // Caches (these improve performance)
+                chunksCache: { enabled: true },
+                resultsCache: { enabled: true },
+
+                // Use our Workload Identity KSA
                 serviceAccount: {
                     create: false,
                     name: "loki",
@@ -134,7 +145,15 @@ export function deployObservability(args: {
 
                 loki: {
                     auth_enabled: false,
-                    commonConfig: { replication_factor: 1 },
+
+                    commonConfig: {
+                        replication_factor: 2,
+                    },
+
+                    // Required in distributed mode for ring membership
+                    memberlist: {
+                        join_members: ["loki-memberlist"],
+                    },
 
                     schemaConfig: {
                         configs: [
@@ -151,7 +170,6 @@ export function deployObservability(args: {
                         ],
                     },
 
-                    // ✅ Chart requires bucketNames.* when using object storage
                     storage: {
                         type: "gcs",
                         bucketNames: {
@@ -162,22 +180,35 @@ export function deployObservability(args: {
                     },
                 },
 
-                singleBinary: {
-                    replicas: 1,
+                // Scale settings (start realistic but not huge)
+                write: {
+                    replicas: 2,
                     resources: {
-                        requests: { cpu: "100m", memory: "256Mi" },
-                        limits: { memory: "512Mi" },
+                        requests: { cpu: "200m", memory: "512Mi" },
+                        limits: { memory: "1Gi" },
+                    },
+                },
+                read: {
+                    replicas: 2,
+                    resources: {
+                        requests: { cpu: "200m", memory: "512Mi" },
+                        limits: { memory: "1Gi" },
+                    },
+                },
+                backend: {
+                    replicas: 2,
+                    resources: {
+                        requests: { cpu: "200m", memory: "512Mi" },
+                        limits: { memory: "1Gi" },
                     },
                 },
 
-                // keep cluster light; no distributed components/caches
-                write: { replicas: 0 },
-                read: { replicas: 0 },
-                backend: { replicas: 0 },
-                chunksCache: { enabled: false },
-                resultsCache: { enabled: false },
-                gateway: { enabled: false },
-                lokiCanary: { enabled: false },
+                // This service is needed for memberlist gossip in many setups
+                memberlist: {
+                    service: {
+                        publishNotReadyAddresses: true,
+                    },
+                },
             },
         },
         { provider, dependsOn: [lokiKsa] }

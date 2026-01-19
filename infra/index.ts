@@ -43,7 +43,7 @@ const nodePool = new gcp.container.NodePool("travel-np", {
     location: zone,
     initialNodeCount: 2,
     nodeConfig: {
-        machineType: "e2-medium",
+        machineType: "e2-standard-4",
         oauthScopes: ["https://www.googleapis.com/auth/cloud-platform"],
     },
 });
