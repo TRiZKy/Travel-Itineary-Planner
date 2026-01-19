@@ -3,6 +3,7 @@ import * as gcp from "@pulumi/gcp";
 import * as k8s from "@pulumi/kubernetes";
 import { execSync } from "child_process";
 import * as yaml from "js-yaml";
+import { deployObservability } from "./k8s/observability";
 
 // -------------------
 // Config
@@ -74,6 +75,14 @@ users:
 
 // Note: Pulumi docs mention using the gke auth plugin for kubeconfig auth. :contentReference[oaicite:6]{index=6}
 const k8sProvider = new k8s.Provider("gke", { kubeconfig }, { dependsOn: [nodePool] });
+const config = new pulumi.Config();
+const observabilityEnabled =
+    config.getBoolean("observability:enabled") ?? true;
+
+const observability = deployObservability({
+    provider: k8sProvider,
+    enabled: observabilityEnabled,
+});
 
 // --------------------
 // Namespace
@@ -139,3 +148,10 @@ const svc = new k8s.core.v1.Service("travel-svc", {
 }, { provider: k8sProvider });
 
 export const serviceIp = svc.status.loadBalancer.ingress[0].ip;
+export const observabilityEnabledOutput = observabilityEnabled;
+
+export const monitoringNamespace =
+    observability?.monitoringNs.metadata.name;
+
+export const loggingNamespace =
+    observability?.loggingNs.metadata.name;

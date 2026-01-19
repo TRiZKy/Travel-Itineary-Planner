@@ -1,3 +1,4 @@
 config:
   gcp:project: project-bc81935a-f9c8-475b-9fb
   gcp:region: europe-west1
+  observability:enabled: "true"

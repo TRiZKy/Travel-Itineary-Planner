@@ -20,3 +20,4 @@ build/
 .DS_Store
 Thumbs.db
 /secrets/secrets.yaml
+/infra/secrets/observability.yaml
