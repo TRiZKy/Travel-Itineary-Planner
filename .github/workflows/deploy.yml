@@ -68,7 +68,7 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # Needed if your Pulumi kubeconfig uses gke-gcloud-auth-plugin exec auth
+      #Needed if your Pulumi kubeconfig uses gke-gcloud-auth-plugin exec auth
       - name: Install GKE auth plugin
         run: gcloud components install gke-gcloud-auth-plugin --quiet
 
