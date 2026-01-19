@@ -1,4 +1,4 @@
-name: ci-cd
+name: build-and-deploy
 
 on:
   push:
@@ -6,10 +6,11 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # required for OIDC to GCP
+  id-token: write
 
 env:
   PROJECT_ID: project-bc81935a-f9c8-475b-9fb
+  PROJECT_NUMBER: "887144365540"
   REGION: europe-west1
   IMAGE_NAME: my-app
   IMAGE_REPO: gcr.io/project-bc81935a-f9c8-475b-9fb
@@ -23,8 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Auth to GCP (OIDC)
       - id: auth
+        name: Auth to GCP (OIDC)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: "projects/887144365540/locations/global/workloadIdentityPools/github-pool/providers/github"
@@ -32,6 +33,7 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
+      # For gcr.io pushes, gcloud can configure docker credential helper.
       - name: Configure Docker auth
         run: gcloud auth configure-docker --quiet
 
@@ -53,13 +55,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Auth to GCP (OIDC)
-        id: auth
+      - id: auth
+        name: Auth to GCP (OIDC)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: "projects/887144365540/locations/global/workloadIdentityPools/github-pool/providers/github"
@@ -67,10 +68,9 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # Needed because kubeconfig uses the gke-gcloud-auth-plugin exec auth
+      # Needed if your Pulumi kubeconfig uses gke-gcloud-auth-plugin exec auth
       - name: Install GKE auth plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin --quiet
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
 
       - name: Install sops
         run: |
@@ -82,7 +82,7 @@ jobs:
         working-directory: infra
         run: pnpm install --frozen-lockfile
 
-      - name: Pulumi deploy (creates GKE + applies k8s + secrets)
+      - name: Pulumi deploy (create/update GKE + apply k8s + secrets)
         working-directory: infra
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
