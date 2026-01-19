@@ -118,7 +118,7 @@ const deploy = new k8s.apps.v1.Deployment("travel", {
                 containers: [{
                     name: "travel",
                     image,
-                    ports: [{ containerPort: 8080 }],
+                    ports: [{ containerPort: 8501 }],
                     envFrom: [{ secretRef: { name: appSecret.metadata.name } }],
                 }],
             },
@@ -134,7 +134,7 @@ const svc = new k8s.core.v1.Service("travel-svc", {
     spec: {
         type: "LoadBalancer",
         selector: appLabels,
-        ports: [{ port: 80, targetPort: 8080 }],
+        ports: [{ port: 80, targetPort: 8501 }],
     },
 }, { provider: k8sProvider });
 
