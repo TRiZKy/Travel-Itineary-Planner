@@ -4,9 +4,9 @@ import * as k8s from "@pulumi/kubernetes";
 import { execSync } from "child_process";
 import * as yaml from "js-yaml";
 
-// -------------------
+// --------------------
 // Config
-// -------------------
+// --------------------
 const cfg = new pulumi.Config();
 const gcpCfg = new pulumi.Config("gcp");
 
