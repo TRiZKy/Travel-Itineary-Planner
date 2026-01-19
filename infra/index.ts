@@ -17,6 +17,10 @@ const zone = cfg.get("zone") || `${region}-b`;
 
 const image = cfg.require("image"); // set by CI (full image ref)
 
+// Workload Identity pool for this project
+const workloadPool = `${project}.svc.id.goog`;
+
+
 
 // --------------------
 // GKE cluster
@@ -29,6 +33,9 @@ const cluster = new gcp.container.Cluster("travel-gke", {
     network: network.name,
     removeDefaultNodePool: true,
     minMasterVersion: "latest",
+    workloadIdentityConfig: {
+        workloadPool,
+    },
 });
 
 const nodePool = new gcp.container.NodePool("travel-np", {
@@ -40,7 +47,37 @@ const nodePool = new gcp.container.NodePool("travel-np", {
         oauthScopes: ["https://www.googleapis.com/auth/cloud-platform"],
     },
 });
+// --------------------
+// GCS bucket + GSA for Loki (object storage)
+// --------------------
 
+const lokiBucket = new gcp.storage.Bucket("loki-bucket", {
+    name: pulumi
+        .interpolate`loki-${project}-${pulumi.getStack()}`
+        .apply((n) => n.toLowerCase()),
+    location: "EU",
+    uniformBucketLevelAccess: true,
+    forceDestroy: true, // learning/dev convenience (remove for real prod)
+});
+
+const lokiGsa = new gcp.serviceaccount.Account("loki-gsa", {
+    accountId: `loki-${pulumi.getStack()}`,
+    displayName: "Loki GCS Writer",
+});
+
+// Allow the GSA to write objects into the bucket
+new gcp.storage.BucketIAMMember("loki-bucket-object-admin", {
+    bucket: lokiBucket.name,
+    role: "roles/storage.objectAdmin",
+    member: pulumi.interpolate`serviceAccount:${lokiGsa.email}`,
+});
+
+// Allow KSA logging/loki to impersonate this GSA via Workload Identity
+new gcp.serviceaccount.IAMMember("loki-wi-binding", {
+    serviceAccountId: lokiGsa.name,
+    role: "roles/iam.workloadIdentityUser",
+    member: pulumi.interpolate`serviceAccount:${workloadPool}[logging/loki]`,
+});
 // --------------------
 // Kubeconfig for Kubernetes provider
 // --------------------
@@ -75,13 +112,19 @@ users:
 
 // Note: Pulumi docs mention using the gke auth plugin for kubeconfig auth. :contentReference[oaicite:6]{index=6}
 const k8sProvider = new k8s.Provider("gke", { kubeconfig }, { dependsOn: [nodePool] });
-const config = new pulumi.Config();
+// --------------------
+// Observability (Prometheus/Grafana + Loki/Promtail)
+// --------------------
 const observabilityEnabled =
-    config.getBoolean("observability:enabled") ?? true;
+    cfg.getBoolean("observability:enabled") ?? true;
 
 const observability = deployObservability({
     provider: k8sProvider,
     enabled: observabilityEnabled,
+    loki: {
+        bucketName: lokiBucket.name,
+        gsaEmail: lokiGsa.email,
+    },
 });
 
 // --------------------
