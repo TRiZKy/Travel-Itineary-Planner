@@ -44,6 +44,8 @@ const nodePool = new gcp.container.NodePool("travel-np", {
     initialNodeCount: 2,
     nodeConfig: {
         machineType: "e2-standard-4",
+        diskType: "pd-standard",
+        diskSizeGb: 30, // or 20
         oauthScopes: ["https://www.googleapis.com/auth/cloud-platform"],
     },
 });
