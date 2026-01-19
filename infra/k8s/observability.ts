@@ -222,12 +222,17 @@ export function deployObservability(args: {
             repositoryOpts: { repo: "https://grafana.github.io/helm-charts" },
             values: {
                 config: {
-                    clients: [{ url: "http://loki:3100/loki/api/v1/push" }],
+                    clients: [
+                        {
+                            url: "http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push",
+                        },
+                    ],
                 },
             },
         },
         { provider, dependsOn: [loki] }
     );
+
 
     return { monitoringNs, loggingNs, kubeProm, loki, promtail };
 }
