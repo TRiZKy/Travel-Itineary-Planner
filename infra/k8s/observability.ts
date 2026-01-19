@@ -91,8 +91,40 @@ export function deployObservability(args: {
         chart: "loki",
         repositoryOpts: { repo: "https://grafana.github.io/helm-charts" },
         values: {
-            loki: { auth_enabled: false },
-            singleBinary: { replicas: 1 },
+            deploymentMode: "SingleBinary",
+
+            loki: {
+                auth_enabled: false,
+                commonConfig: {
+                    replication_factor: 1,
+                },
+                storage: {
+                    type: "filesystem",
+                },
+                schemaConfig: {
+                    configs: [
+                        {
+                            from: "2024-01-01",
+                            store: "tsdb",
+                            object_store: "filesystem",
+                            schema: "v13",
+                            index: {
+                                prefix: "index_",
+                                period: "24h",
+                            },
+                        },
+                    ],
+                },
+            },
+
+            singleBinary: {
+                replicas: 1,
+            },
+
+            // turn off the distributed pieces so it won't ask for buckets
+            write: { replicas: 0 },
+            read: { replicas: 0 },
+            backend: { replicas: 0 },
         },
     }, { provider });
 
