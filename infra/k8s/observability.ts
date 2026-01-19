@@ -120,6 +120,7 @@ export function deployObservability(args: {
     const loki = new k8s.helm.v3.Release(
         "loki",
         {
+            name: "loki",
             namespace: loggingNs.metadata.name,
             chart: "loki",
             repositoryOpts: { repo: "https://grafana.github.io/helm-charts" },
