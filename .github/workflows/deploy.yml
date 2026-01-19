@@ -87,6 +87,8 @@ jobs:
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
         run: |
-          pnpm pulumi stack select $PULUMI_STACK
+          pnpm pulumi stack select $PULUMI_STACK || pnpm pulumi stack init $PULUMI_STACK
+          pnpm pulumi config set gcp:project $PROJECT_ID
+          pnpm pulumi config set region $REGION
           pnpm pulumi config set image "${{ needs.build.outputs.image }}"
           pnpm pulumi up --yes
