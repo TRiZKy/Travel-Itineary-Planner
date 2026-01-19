@@ -8,11 +8,14 @@ import * as yaml from "js-yaml";
 // Config
 // --------------------
 const cfg = new pulumi.Config();
-const project = cfg.require("gcp:project");
-const region = cfg.get("region") || "europe-west1";
+const gcpCfg = new pulumi.Config("gcp");
+
+const project = gcpCfg.require("project");
+const region = gcpCfg.get("region") || "europe-west1";
 const zone = cfg.get("zone") || `${region}-b`;
 
 const image = cfg.require("image"); // set by CI (full image ref)
+
 
 // --------------------
 // GKE cluster
