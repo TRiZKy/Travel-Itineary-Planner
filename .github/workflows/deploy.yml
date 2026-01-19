@@ -1,0 +1,92 @@
+name: ci-cd
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  id-token: write  # required for OIDC to GCP
+
+env:
+  PROJECT_ID: project-bc81935a-f9c8-475b-9fb
+  REGION: europe-west1
+  IMAGE_NAME: my-app
+  IMAGE_REPO: gcr.io/project-bc81935a-f9c8-475b-9fb
+  PULUMI_STACK: prod
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP (OIDC)
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/887144365540/locations/global/workloadIdentityPools/github-pool/providers/github"
+          service_account: "pulumi-ci@project-bc81935a-f9c8-475b-9fb.iam.gserviceaccount.com"
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker --quiet
+
+      - id: meta
+        name: Compute image ref
+        run: |
+          TAG="sha-${GITHUB_SHA::7}"
+          IMAGE="${IMAGE_REPO}/${IMAGE_NAME}:${TAG}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push image
+        run: |
+          docker build -t "${{ steps.meta.outputs.image }}" ./app
+          docker push "${{ steps.meta.outputs.image }}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Auth to GCP (OIDC)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/887144365540/locations/global/workloadIdentityPools/github-pool/providers/github"
+          service_account: "pulumi-ci@project-bc81935a-f9c8-475b-9fb.iam.gserviceaccount.com"
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # Needed because kubeconfig uses the gke-gcloud-auth-plugin exec auth
+      - name: Install GKE auth plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+
+      - name: Install sops
+        run: |
+          curl -L -o sops https://github.com/getsops/sops/releases/download/v3.9.3/sops-v3.9.3.linux.amd64
+          chmod +x sops
+          sudo mv sops /usr/local/bin/sops
+
+      - name: Install infra dependencies
+        working-directory: infra
+        run: pnpm install --frozen-lockfile
+
+      - name: Pulumi deploy (creates GKE + applies k8s + secrets)
+        working-directory: infra
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+        run: |
+          pnpm pulumi stack select $PULUMI_STACK
+          pnpm pulumi config set image "${{ needs.build.outputs.image }}"
+          pnpm pulumi up --yes

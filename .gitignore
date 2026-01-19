@@ -19,3 +19,4 @@ build/
 # System files
 .DS_Store
 Thumbs.db
+/secrets/secrets.yaml

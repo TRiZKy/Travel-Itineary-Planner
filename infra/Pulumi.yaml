@@ -1,0 +1,10 @@
+name: project-bc81935a-f9c8-475b-9fb
+description: Pulumi GKE
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: typescript
