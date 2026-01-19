@@ -110,7 +110,7 @@ users:
 `;
     });
 
-// Note: Pulumi docs mention using the gke auth plugin for kubeconfig auth. :contentReference[oaicite:6]{index=6}
+// Note: Pulumi docs mention using the gke auth plugin for kubeconfig auth.
 const k8sProvider = new k8s.Provider("gke", { kubeconfig }, { dependsOn: [nodePool] });
 // --------------------
 // Observability (Prometheus/Grafana + Loki/Promtail)
